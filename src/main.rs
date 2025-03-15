@@ -12,8 +12,30 @@ use sdl2::surface::Surface;
 use sdl2::render::Texture;
 use sdl2::render::TextureQuery;
 
+#[derive(Clone)]
+struct Cell {
+    color: Color,
+}
+
+impl Cell {
+    fn new() -> Self {
+        let mut rng = rand::thread_rng();
+        Self {
+            color: Color::RGB(rng.r#gen(), rng.r#gen(), rng.r#gen()),
+        }
+    }
+
+    fn update(&self, neighbors: usize) -> Option<Self> {
+        if neighbors == 2 || neighbors == 3 {
+            Some(Self { color: self.color })
+        } else {
+            None
+        }
+    }
+}
+
 struct GameOfLife {
-    grid: Vec<Vec<Option<Color>>>,
+    grid: Vec<Vec<Option<Cell>>>,
     generation: u64,
 }
 
@@ -24,16 +46,15 @@ impl GameOfLife {
             generation: 0,
         };
         let mut rng = rand::thread_rng();
-        for _ in 0..100 {
+        for _ in 0..500 {
             let x = rng.gen_range(0..width);
             let y = rng.gen_range(0..height);
-            instance.grid[y][x] = Some(Color::RGB(rng.r#gen(), rng.r#gen(), rng.r#gen()));
+            instance.grid[y][x] = Some(Cell::new());
         }
         instance
     }
 
     fn update(&mut self) {
-        let mut rng = rand::thread_rng();
         let mut next_grid = self.grid.clone();
         let height = self.grid.len();
         let width = if height > 0 { self.grid[0].len() } else { 0 };
@@ -51,10 +72,10 @@ impl GameOfLife {
                         }
                     }
                 }
-                next_grid[y][x] = if is_alive && (neighbors == 2 || neighbors == 3) {
-                    self.grid[y][x]
-                } else if !is_alive && neighbors == 3 {
-                    Some(Color::RGB(rng.r#gen(), rng.r#gen(), rng.r#gen()))
+                next_grid[y][x] = if is_alive {
+                    self.grid[y][x].as_ref().unwrap().update(neighbors)
+                } else if neighbors == 3 {
+                    Some(Cell::new())
                 } else {
                     None
                 };
@@ -71,9 +92,9 @@ impl GameOfLife {
         let cell_w = win_w / width as u32;
         let cell_h = win_h / height as u32;
         for (y, row) in self.grid.iter().enumerate() {
-            for (x, &maybe_color) in row.iter().enumerate() {
-                if let Some(color) = maybe_color {
-                    canvas.set_draw_color(color);
+            for (x, cell) in row.iter().enumerate() {
+                if let Some(cell) = cell {
+                    canvas.set_draw_color(cell.color);
                     let _ = canvas.fill_rect(Rect::new(
                         x as i32 * cell_w as i32,
                         y as i32 * cell_h as i32,
@@ -143,7 +164,7 @@ fn main() {
                         let cx = (x as u32 / cell_w) as usize;
                         let cy = (y as u32 / cell_h) as usize;
                         if cy < height && cx < width && game.grid[cy][cx].is_none() {
-                            game.grid[cy][cx] = Some(Color::RGB(rng.r#gen(), rng.r#gen(), rng.r#gen()));
+                            game.grid[cy][cx] = Some(Cell::new());
                         }
                     }
                 },
@@ -163,7 +184,7 @@ fn main() {
                             let nx = (cx as isize + dx).rem_euclid(width as isize) as usize;
                             let ny = (cy as isize + dy).rem_euclid(height as isize) as usize;
                             if game.grid[ny][nx].is_none() {
-                                game.grid[ny][nx] = Some(Color::RGB(rng.r#gen(), rng.r#gen(), rng.r#gen()));
+                                game.grid[ny][nx] = Some(Cell::new());
                             }
                         }
                     }
