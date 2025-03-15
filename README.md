@@ -9,8 +9,14 @@
 ## Features
 - Resizable window
 - Click to spawn cells
+- Right-click to spawn 50 cells in a bloom pattern
 - HUD displaying FPS, live cell count, and generation count
-- Updates every second
+- Updates every 500ms
 - Limited to 60 FPS
+- Dark grey background
+- Cells with 1px black border and double size
+- Cells explode when they die
+- Title screen to start or quit the game
+- In-game menu to resume or quit the game
 
 Enjoy playing Conway's Game of Life!

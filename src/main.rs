@@ -8,26 +8,29 @@ use sdl2::ttf;
 use rand::Rng;
 use sdl2::render::TextureCreator;
 use sdl2::video::WindowContext;
-use sdl2::surface::Surface;
 use sdl2::render::Texture;
 use sdl2::render::TextureQuery;
 
 #[derive(Clone)]
 struct Cell {
+    x: isize,
+    y: isize,
     color: Color,
 }
 
 impl Cell {
-    fn new() -> Self {
+    fn new(x: isize, y: isize) -> Self {
         let mut rng = rand::thread_rng();
         Self {
+            x,
+            y,
             color: Color::RGB(rng.r#gen(), rng.r#gen(), rng.r#gen()),
         }
     }
 
     fn update(&self, neighbors: usize) -> Option<Self> {
         if neighbors == 2 || neighbors == 3 {
-            Some(Self { color: self.color })
+            Some(Self { x: self.x, y: self.y, color: self.color })
         } else {
             None
         }
@@ -35,79 +38,77 @@ impl Cell {
 }
 
 struct GameOfLife {
-    grid: Vec<Vec<Option<Cell>>>,
+    cells: Vec<Cell>,
     generation: u64,
+    offset_x: isize,
+    offset_y: isize,
 }
 
 impl GameOfLife {
-    fn new(width: usize, height: usize) -> Self {
+    fn new() -> Self {
         let mut instance = Self {
-            grid: vec![vec![None; width]; height],
+            cells: Vec::new(),
             generation: 0,
+            offset_x: 0,
+            offset_y: 0,
         };
         let mut rng = rand::thread_rng();
         for _ in 0..500 {
-            let x = rng.gen_range(0..width);
-            let y = rng.gen_range(0..height);
-            instance.grid[y][x] = Some(Cell::new());
+            let x = rng.gen_range(0..50) as isize;
+            let y = rng.gen_range(0..50) as isize;
+            instance.cells.push(Cell::new(x, y));
         }
         instance
     }
 
     fn update(&mut self) {
-        let mut next_grid = self.grid.clone();
-        let height = self.grid.len();
-        let width = if height > 0 { self.grid[0].len() } else { 0 };
-        for y in 0..height {
-            for x in 0..width {
-                let is_alive = self.grid[y][x].is_some();
-                let mut neighbors = 0;
-                for dy in [-1, 0, 1] {
-                    for dx in [-1, 0, 1] {
-                        if dx == 0 && dy == 0 { continue; }
-                        let ny = (y as isize + dy).rem_euclid(height as isize) as usize;
-                        let nx = (x as isize + dx).rem_euclid(width as isize) as usize;
-                        if self.grid[ny][nx].is_some() {
-                            neighbors += 1;
-                        }
-                    }
+        let mut next_cells = Vec::new();
+        let mut neighbor_counts = std::collections::HashMap::new();
+
+        for cell in &self.cells {
+            for dy in [-1, 0, 1] {
+                for dx in [-1, 0, 1] {
+                    if dx == 0 && dy == 0 { continue; }
+                    let neighbor_x = cell.x + dx;
+                    let neighbor_y = cell.y + dy;
+                    *neighbor_counts.entry((neighbor_x, neighbor_y)).or_insert(0) += 1;
                 }
-                next_grid[y][x] = if is_alive {
-                    self.grid[y][x].as_ref().unwrap().update(neighbors)
-                } else if neighbors == 3 {
-                    Some(Cell::new())
-                } else {
-                    None
-                };
             }
         }
-        self.grid = next_grid;
+
+        for cell in &self.cells {
+            let count = neighbor_counts.get(&(cell.x, cell.y)).cloned().unwrap_or(0);
+            if let Some(updated_cell) = cell.update(count) {
+                next_cells.push(updated_cell);
+            }
+        }
+
+        for (&(x, y), &count) in &neighbor_counts {
+            if count == 3 && !self.cells.iter().any(|cell| cell.x == x && cell.y == y) {
+                next_cells.push(Cell::new(x, y));
+            }
+        }
+
+        self.cells = next_cells;
     }
 
     fn draw(&self, canvas: &mut sdl2::render::Canvas<sdl2::video::Window>) {
         let (win_w, win_h) = canvas.output_size().unwrap();
-        let height = self.grid.len();
-        let width = if height > 0 { self.grid[0].len() } else { 0 };
-        if width == 0 || height == 0 { return; }
-        let cell_w = win_w / width as u32;
-        let cell_h = win_h / height as u32;
-        for (y, row) in self.grid.iter().enumerate() {
-            for (x, cell) in row.iter().enumerate() {
-                if let Some(cell) = cell {
-                    canvas.set_draw_color(cell.color);
-                    let _ = canvas.fill_rect(Rect::new(
-                        x as i32 * cell_w as i32,
-                        y as i32 * cell_h as i32,
-                        cell_w,
-                        cell_h,
-                    ));
-                }
-            }
+        let cell_w = win_w / 50;
+        let cell_h = win_h / 50;
+        for cell in &self.cells {
+            canvas.set_draw_color(cell.color);
+            let _ = canvas.fill_rect(Rect::new(
+                (cell.x * cell_w as isize + self.offset_x) as i32,
+                (cell.y * cell_h as isize + self.offset_y) as i32,
+                cell_w,
+                cell_h,
+            ));
         }
     }
 
     fn live_cell_count(&self) -> usize {
-        self.grid.iter().flat_map(|row| row.iter()).filter(|c| c.is_some()).count()
+        self.cells.len()
     }
 }
 
@@ -138,12 +139,15 @@ fn main() {
     let font = ttf_context.load_font("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 20).unwrap();
     let texture_creator = canvas.texture_creator();
 
-    let mut game = GameOfLife::new(50, 50);
+    let mut game = GameOfLife::new();
 
     let mut last_update = Instant::now();
     let mut last_frame = Instant::now();
     let mut fps_count = 0;
     let mut fps = 0;
+    let mut dragging = false;
+    let mut last_mouse_x = 0;
+    let mut last_mouse_y = 0;
 
     'running: loop {
         let frame_start = Instant::now();
@@ -154,38 +158,37 @@ fn main() {
                     break 'running;
                 },
                 Event::MouseButtonDown { mouse_btn: MouseButton::Left, x, y, .. } => {
-                    let (win_w, win_h) = canvas.output_size().unwrap();
-                    let height = game.grid.len();
-                    let width = if height > 0 { game.grid[0].len() } else { 0 };
-                    let mut rng = rand::thread_rng();
-                    if width > 0 && height > 0 {
-                        let cell_w = win_w / width as u32;
-                        let cell_h = win_h / height as u32;
-                        let cx = (x as u32 / cell_w) as usize;
-                        let cy = (y as u32 / cell_h) as usize;
-                        if cy < height && cx < width && game.grid[cy][cx].is_none() {
-                            game.grid[cy][cx] = Some(Cell::new());
-                        }
+                    dragging = true;
+                    last_mouse_x = x;
+                    last_mouse_y = y;
+                },
+                Event::MouseButtonUp { mouse_btn: MouseButton::Left, .. } => {
+                    dragging = false;
+                },
+                Event::MouseMotion { x, y, .. } => {
+                    if dragging {
+                        let dx = x - last_mouse_x;
+                        let dy = y - last_mouse_y;
+                        game.offset_x += dx as isize;
+                        game.offset_y += dy as isize;
+                        last_mouse_x = x;
+                        last_mouse_y = y;
                     }
                 },
                 Event::MouseButtonDown { mouse_btn: MouseButton::Right, x, y, .. } => {
                     let (win_w, win_h) = canvas.output_size().unwrap();
-                    let height = game.grid.len();
-                    let width = if height > 0 { game.grid[0].len() } else { 0 };
+                    let cell_w = win_w / 50;
+                    let cell_h = win_h / 50;
+                    let cx = ((x as isize - game.offset_x) / cell_w as isize) as isize;
+                    let cy = ((y as isize - game.offset_y) / cell_h as isize) as isize;
                     let mut rng = rand::thread_rng();
-                    if width > 0 && height > 0 {
-                        let cell_w = win_w / width as u32;
-                        let cell_h = win_h / height as u32;
-                        let cx = (x as u32 / cell_w) as usize;
-                        let cy = (y as u32 / cell_h) as usize;
-                        for _ in 0..50 {
-                            let dx = rng.gen_range(-5..=5);
-                            let dy = rng.gen_range(-5..=5);
-                            let nx = (cx as isize + dx).rem_euclid(width as isize) as usize;
-                            let ny = (cy as isize + dy).rem_euclid(height as isize) as usize;
-                            if game.grid[ny][nx].is_none() {
-                                game.grid[ny][nx] = Some(Cell::new());
-                            }
+                    for _ in 0..50 {
+                        let dx = rng.gen_range(-5..=5);
+                        let dy = rng.gen_range(-5..=5);
+                        let nx = cx + dx;
+                        let ny = cy + dy;
+                        if !game.cells.iter().any(|cell| cell.x == nx && cell.y == ny) {
+                            game.cells.push(Cell::new(nx, ny));
                         }
                     }
                 },
