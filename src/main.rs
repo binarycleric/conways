@@ -18,6 +18,7 @@ struct Cell {
     x: isize,
     y: isize,
     color: Color,
+    age: u64, // Add age to track how long the cell has lived
 }
 
 impl Cell {
@@ -27,12 +28,13 @@ impl Cell {
             x,
             y,
             color: Color::RGB(rng.r#gen(), rng.r#gen(), rng.r#gen()),
+            age: 0, // Initialize age to 0
         }
     }
 
     fn update(&self, neighbors: usize) -> Option<Self> {
         if neighbors == 2 || neighbors == 3 {
-            Some(Self { x: self.x, y: self.y, color: self.color })
+            Some(Self { x: self.x, y: self.y, color: self.color, age: self.age + 1 }) // Increment age
         } else {
             None
         }
@@ -45,6 +47,7 @@ struct GameOfLife {
     offset_x: isize,
     offset_y: isize,
     zoom: f32,
+    score: u64, // Add score to track player's score
 }
 
 impl GameOfLife {
@@ -55,6 +58,7 @@ impl GameOfLife {
             offset_x: 0,
             offset_y: 0,
             zoom: 1.0,
+            score: 0, // Initialize score to 0
         };
         let mut rng = rand::thread_rng();
         while instance.cells.len() < 500 {
@@ -85,6 +89,9 @@ impl GameOfLife {
         for cell in &self.cells {
             let count = neighbor_counts.get(&(cell.x, cell.y)).cloned().unwrap_or(0);
             if let Some(updated_cell) = cell.update(count) {
+                if updated_cell.age > 5 {
+                    self.score += 1; // Increment score if cell lives longer than 5 generations
+                }
                 next_cells.push(updated_cell);
             }
         }
@@ -235,18 +242,21 @@ fn main() {
         canvas.clear();
         game.draw(&mut canvas);
 
-        // draw HUD with fps, live_cell_count, and generation
+        // draw HUD with fps, live_cell_count, generation, and score
         let fps_texture = create_texture_from_text(&texture_creator, &font, &format!("FPS: {}", fps), Color::YELLOW);
         let live_cells_texture = create_texture_from_text(&texture_creator, &font, &format!("Live Cells: {}", game.live_cell_count()), Color::YELLOW);
         let generation_texture = create_texture_from_text(&texture_creator, &font, &format!("Generation: {}", game.generation), Color::YELLOW);
+        let score_texture = create_texture_from_text(&texture_creator, &font, &format!("Score: {}", game.score), Color::YELLOW);
 
         let TextureQuery { width: fps_width, height: fps_height, .. } = fps_texture.query();
         let TextureQuery { width: live_cells_width, height: live_cells_height, .. } = live_cells_texture.query();
         let TextureQuery { width: generation_width, height: generation_height, .. } = generation_texture.query();
+        let TextureQuery { width: score_width, height: score_height, .. } = score_texture.query();
 
         canvas.copy(&fps_texture, None, Some(Rect::new(10, 10, fps_width, fps_height))).unwrap();
         canvas.copy(&live_cells_texture, None, Some(Rect::new(10, 20 + fps_height as i32, live_cells_width, live_cells_height))).unwrap();
         canvas.copy(&generation_texture, None, Some(Rect::new(10, 30 + fps_height as i32 + live_cells_height as i32, generation_width, generation_height))).unwrap();
+        canvas.copy(&score_texture, None, Some(Rect::new(10, 40 + fps_height as i32 + live_cells_height as i32 + generation_height as i32, score_width, score_height))).unwrap();
 
         canvas.present();
 
