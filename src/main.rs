@@ -42,6 +42,7 @@ struct GameOfLife {
     generation: u64,
     offset_x: isize,
     offset_y: isize,
+    zoom: f32,
 }
 
 impl GameOfLife {
@@ -51,12 +52,15 @@ impl GameOfLife {
             generation: 0,
             offset_x: 0,
             offset_y: 0,
+            zoom: 1.0,
         };
         let mut rng = rand::thread_rng();
-        for _ in 0..500 {
+        while instance.cells.len() < 500 {
             let x = rng.gen_range(0..50) as isize;
             let y = rng.gen_range(0..50) as isize;
-            instance.cells.push(Cell::new(x, y));
+            if !instance.cells.iter().any(|cell| cell.x == x && cell.y == y) {
+                instance.cells.push(Cell::new(x, y));
+            }
         }
         instance
     }
@@ -94,13 +98,13 @@ impl GameOfLife {
 
     fn draw(&self, canvas: &mut sdl2::render::Canvas<sdl2::video::Window>) {
         let (win_w, win_h) = canvas.output_size().unwrap();
-        let cell_w = win_w / 50;
-        let cell_h = win_h / 50;
+        let cell_w = (win_w as f32 / 50.0 * self.zoom) as u32;
+        let cell_h = (win_h as f32 / 50.0 * self.zoom) as u32;
         for cell in &self.cells {
             canvas.set_draw_color(cell.color);
             let _ = canvas.fill_rect(Rect::new(
-                (cell.x * cell_w as isize + self.offset_x) as i32,
-                (cell.y * cell_h as isize + self.offset_y) as i32,
+                ((cell.x as f32 * cell_w as f32 + self.offset_x as f32) * self.zoom) as i32,
+                ((cell.y as f32 * cell_h as f32 + self.offset_y as f32) * self.zoom) as i32,
                 cell_w,
                 cell_h,
             ));
@@ -183,14 +187,26 @@ fn main() {
                     let cy = ((y as isize - game.offset_y) / cell_h as isize) as isize;
                     let mut rng = rand::thread_rng();
                     for _ in 0..50 {
-                        let dx = rng.gen_range(-5..=5);
-                        let dy = rng.gen_range(-5..=5);
+                        let angle = rng.gen_range(0.0..(2.0 * std::f32::consts::PI));
+                        let radius = rng.gen_range(0..5) as f32;
+                        let dx = (radius * angle.cos()).round() as isize;
+                        let dy = (radius * angle.sin()).round() as isize;
                         let nx = cx + dx;
                         let ny = cy + dy;
                         if !game.cells.iter().any(|cell| cell.x == nx && cell.y == ny) {
                             game.cells.push(Cell::new(nx, ny));
                         }
                     }
+                },
+                Event::MouseWheel { y, .. } => {
+                    if y > 0 {
+                        game.zoom *= 1.1;
+                    } else if y < 0 {
+                        game.zoom /= 1.1;
+                    }
+                },
+                Event::KeyDown { keycode: Some(Keycode::X), .. } => {
+                    game.zoom = 1.0;
                 },
                 Event::Window {..} => {
                     // handle window resizing if needed
