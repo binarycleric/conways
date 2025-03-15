@@ -10,6 +10,8 @@ use sdl2::render::TextureCreator;
 use sdl2::video::WindowContext;
 use sdl2::render::Texture;
 use sdl2::render::TextureQuery;
+use sdl2::mixer::{InitFlag, AUDIO_S16LSB, DEFAULT_CHANNELS};
+use std::process::Command;
 
 #[derive(Clone)]
 struct Cell {
@@ -129,6 +131,13 @@ fn create_texture_from_text<'a>(
 fn main() {
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
+
+    // Start streaming music from YouTube using youtube-dl and mpv
+    let mut mpv_process = Command::new("mpv")
+        .arg("--no-video")
+        .arg("https://www.youtube.com/watch?v=jfKfPfyJRdk")
+        .spawn()
+        .expect("Failed to start music stream");
 
     let window = video_subsystem.window("Conway's Game of Life", 800, 600)
         .resizable()
@@ -254,4 +263,7 @@ fn main() {
             std::thread::sleep(Duration::from_millis(16) - frame_duration);
         }
     }
+
+    // Ensure mpv process is killed when the game is closed
+    mpv_process.kill().expect("Failed to kill mpv process");
 }

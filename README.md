@@ -6,6 +6,10 @@
 3. Run `cargo run --release` to start the game.
 4. Ensure you have a TTF font file at `/path/to/font.ttf`.
 
+```shell
+$ sudo apt-get install mpv youtube-dl
+```
+
 ## Features
 - Resizable window
 - Click to spawn cells
