@@ -46,8 +46,7 @@ struct GameOfLife {
     generation: u64,
     offset_x: isize,
     offset_y: isize,
-    zoom: f32,
-    score: u64, // Add score to track player's score
+    // Remove score field
 }
 
 impl GameOfLife {
@@ -57,8 +56,7 @@ impl GameOfLife {
             generation: 0,
             offset_x: 0,
             offset_y: 0,
-            zoom: 1.0,
-            score: 0, // Initialize score to 0
+            // Remove score initialization
         };
         let mut rng = rand::thread_rng();
         while instance.cells.len() < 500 {
@@ -89,9 +87,7 @@ impl GameOfLife {
         for cell in &self.cells {
             let count = neighbor_counts.get(&(cell.x, cell.y)).cloned().unwrap_or(0);
             if let Some(updated_cell) = cell.update(count) {
-                if updated_cell.age > 5 {
-                    self.score += 1; // Increment score if cell lives longer than 5 generations
-                }
+                // Remove score increment
                 next_cells.push(updated_cell);
             }
         }
@@ -107,15 +103,15 @@ impl GameOfLife {
 
     fn draw(&self, canvas: &mut sdl2::render::Canvas<sdl2::video::Window>) {
         let (win_w, win_h) = canvas.output_size().unwrap();
-        let cell_w = (win_w as f32 / 50.0 * self.zoom) as u32;
-        let cell_h = (win_h as f32 / 50.0 * self.zoom) as u32;
+        let cell_w = win_w / 50;
+        let cell_h = win_h / 50;
         for cell in &self.cells {
             canvas.set_draw_color(cell.color);
             let _ = canvas.fill_rect(Rect::new(
-                ((cell.x as f32 * cell_w as f32 + self.offset_x as f32) * self.zoom) as i32,
-                ((cell.y as f32 * cell_h as f32 + self.offset_y as f32) * self.zoom) as i32,
-                cell_w,
-                cell_h,
+                (cell.x * cell_w as isize + self.offset_x) as i32,
+                (cell.y * cell_h as isize + self.offset_y) as i32,
+                cell_w as u32,
+                cell_h as u32,
             ));
         }
     }
@@ -147,8 +143,7 @@ fn main() {
         .expect("Failed to start music stream");
 
     let window = video_subsystem.window("Conway's Game of Life", 800, 600)
-        .resizable()
-        .position_centered()
+        .fullscreen_desktop() // Start in full-screen mode
         .build()
         .unwrap();
 
@@ -214,15 +209,7 @@ fn main() {
                         }
                     }
                 },
-                Event::MouseWheel { y, .. } => {
-                    if y > 0 {
-                        game.zoom *= 1.1;
-                    } else if y < 0 {
-                        game.zoom /= 1.1;
-                    }
-                },
                 Event::KeyDown { keycode: Some(Keycode::X), .. } => {
-                    game.zoom = 1.0;
                 },
                 Event::Window {..} => {
                     // handle window resizing if needed
@@ -242,21 +229,18 @@ fn main() {
         canvas.clear();
         game.draw(&mut canvas);
 
-        // draw HUD with fps, live_cell_count, generation, and score
+        // draw HUD with fps, live_cell_count, and generation
         let fps_texture = create_texture_from_text(&texture_creator, &font, &format!("FPS: {}", fps), Color::YELLOW);
         let live_cells_texture = create_texture_from_text(&texture_creator, &font, &format!("Live Cells: {}", game.live_cell_count()), Color::YELLOW);
         let generation_texture = create_texture_from_text(&texture_creator, &font, &format!("Generation: {}", game.generation), Color::YELLOW);
-        let score_texture = create_texture_from_text(&texture_creator, &font, &format!("Score: {}", game.score), Color::YELLOW);
-
+        // Remove score texture creation and rendering
         let TextureQuery { width: fps_width, height: fps_height, .. } = fps_texture.query();
         let TextureQuery { width: live_cells_width, height: live_cells_height, .. } = live_cells_texture.query();
         let TextureQuery { width: generation_width, height: generation_height, .. } = generation_texture.query();
-        let TextureQuery { width: score_width, height: score_height, .. } = score_texture.query();
 
         canvas.copy(&fps_texture, None, Some(Rect::new(10, 10, fps_width, fps_height))).unwrap();
         canvas.copy(&live_cells_texture, None, Some(Rect::new(10, 20 + fps_height as i32, live_cells_width, live_cells_height))).unwrap();
         canvas.copy(&generation_texture, None, Some(Rect::new(10, 30 + fps_height as i32 + live_cells_height as i32, generation_width, generation_height))).unwrap();
-        canvas.copy(&score_texture, None, Some(Rect::new(10, 40 + fps_height as i32 + live_cells_height as i32 + generation_height as i32, score_width, score_height))).unwrap();
 
         canvas.present();
 
