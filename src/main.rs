@@ -108,6 +108,13 @@ impl GameOfLife {
         for cell in &self.cells {
             canvas.set_draw_color(cell.color);
             let _ = canvas.fill_rect(Rect::new(
+                (cell.x * cell_w as isize + self.offset_x) as i32 + 2,
+                (cell.y * cell_h as isize + self.offset_y) as i32 + 2,
+                (cell_w - 4) as u32,
+                (cell_h - 4) as u32,
+            ));
+            canvas.set_draw_color(Color::WHITE);
+            let _ = canvas.draw_rect(Rect::new(
                 (cell.x * cell_w as isize + self.offset_x) as i32,
                 (cell.y * cell_h as isize + self.offset_y) as i32,
                 cell_w as u32,
@@ -171,6 +178,18 @@ fn main() {
                 Event::Quit {..}
                 | Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
                     break 'running;
+                },
+                Event::KeyDown { keycode: Some(Keycode::W), .. } => {
+                    game.offset_y += 25; // Move camera up
+                },
+                Event::KeyDown { keycode: Some(Keycode::A), .. } => {
+                    game.offset_x += 25; // Move camera left
+                },
+                Event::KeyDown { keycode: Some(Keycode::S), .. } => {
+                    game.offset_y -= 25; // Move camera down
+                },
+                Event::KeyDown { keycode: Some(Keycode::D), .. } => {
+                    game.offset_x -= 25; // Move camera right
                 },
                 Event::MouseButtonDown { mouse_btn: MouseButton::Left, x, y, .. } => {
                     dragging = true;
