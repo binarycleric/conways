@@ -138,7 +138,8 @@ fn create_texture_from_text<'a>(
     texture_creator.create_texture_from_surface(&surface).unwrap()
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
 
