@@ -10,8 +10,10 @@ use sdl2::render::TextureCreator;
 use sdl2::video::WindowContext;
 use sdl2::render::Texture;
 use sdl2::render::TextureQuery;
-use sdl2::mixer::{InitFlag, AUDIO_S16LSB, DEFAULT_CHANNELS};
+// Remove unused imports
+// use sdl2::mixer::{InitFlag, AUDIO_S16LSB, DEFAULT_CHANNELS};
 use std::process::Command;
+use std::collections::HashMap;
 
 const CELL_COLORS: [Color; 48] = [
     Color::RGB(255, 87, 34), Color::RGB(76, 175, 80), Color::RGB(33, 150, 243),
@@ -65,7 +67,6 @@ struct GameOfLife {
     generation: u64,
     offset_x: isize,
     offset_y: isize,
-    // Remove score field
 }
 
 impl GameOfLife {
@@ -75,7 +76,6 @@ impl GameOfLife {
             generation: 0,
             offset_x: 0,
             offset_y: 0,
-            // Remove score initialization
         };
         let mut rng = rand::thread_rng();
         while instance.cells.len() < 500 {
@@ -106,7 +106,6 @@ impl GameOfLife {
         for cell in &self.cells {
             let count = neighbor_counts.get(&(cell.x, cell.y)).cloned().unwrap_or(0);
             if let Some(updated_cell) = cell.update(count) {
-                // Remove score increment
                 next_cells.push(updated_cell);
             }
         }
@@ -120,10 +119,11 @@ impl GameOfLife {
         self.cells = next_cells;
     }
 
-    fn draw(&self, canvas: &mut sdl2::render::Canvas<sdl2::video::Window>) {
+    fn draw<'a>(&self, canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, texture_creator: &'a TextureCreator<WindowContext>, font: &sdl2::ttf::Font, age_textures: &mut HashMap<u64, Texture<'a>>) {
         let (win_w, win_h) = canvas.output_size().unwrap();
         let cell_w = win_w / 50;
         let cell_h = win_h / 50;
+
         for cell in &self.cells {
             canvas.set_draw_color(cell.color);
             let _ = canvas.fill_rect(Rect::new(
@@ -139,6 +139,23 @@ impl GameOfLife {
                 cell_w as u32,
                 cell_h as u32,
             ));
+
+            // Cache the age texture
+            let age_texture = age_textures.entry(cell.age).or_insert_with(|| {
+                create_texture_from_text(texture_creator, font, &cell.age.to_string(), Color::YELLOW)
+            });
+
+            let TextureQuery { width: age_width, height: age_height, .. } = age_texture.query();
+            let _ = canvas.copy(
+                age_texture,
+                None,
+                Some(Rect::new(
+                    (cell.x * cell_w as isize + self.offset_x) as i32 + (cell_w as i32 - age_width as i32) / 2,
+                    (cell.y * cell_h as isize + self.offset_y) as i32 + (cell_h as i32 - age_height as i32) / 2,
+                    age_width,
+                    age_height,
+                )),
+            );
         }
     }
 
@@ -191,6 +208,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut dragging = false;
     let mut last_mouse_x = 0;
     let mut last_mouse_y = 0;
+    let mut age_textures: HashMap<u64, Texture> = HashMap::new();
 
     'running: loop {
         let frame_start = Instant::now();
@@ -267,7 +285,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         canvas.set_draw_color(Color::BLACK);
         canvas.clear();
-        game.draw(&mut canvas);
+        game.draw(&mut canvas, &texture_creator, &font, &mut age_textures);
 
         // draw HUD with fps, live_cell_count, and generation
         let fps_texture = create_texture_from_text(&texture_creator, &font, &format!("FPS: {}", fps), Color::YELLOW);
