@@ -10,12 +10,11 @@ use sdl2::render::TextureCreator;
 use sdl2::video::WindowContext;
 use sdl2::render::Texture;
 use sdl2::render::TextureQuery;
-// Remove unused imports
-// use sdl2::mixer::{InitFlag, AUDIO_S16LSB, DEFAULT_CHANNELS};
+use sdl2::mixer::{InitFlag, AUDIO_S16LSB, DEFAULT_CHANNELS};
 use std::process::Command;
 use std::collections::HashMap;
 
-const CELL_COLORS: [Color; 48] = [
+const CELL_COLORS: [Color; 45] = [
     Color::RGB(255, 87, 34), Color::RGB(76, 175, 80), Color::RGB(33, 150, 243),
     Color::RGB(156, 39, 176), Color::RGB(255, 235, 59), Color::RGB(0, 188, 212),
     Color::RGB(244, 67, 54), Color::RGB(139, 195, 74), Color::RGB(3, 169, 244),
@@ -23,15 +22,14 @@ const CELL_COLORS: [Color; 48] = [
     Color::RGB(233, 30, 99), Color::RGB(205, 220, 57), Color::RGB(0, 122, 255),
     Color::RGB(63, 81, 181), Color::RGB(255, 152, 0), Color::RGB(0, 188, 212),
     Color::RGB(255, 87, 34), Color::RGB(76, 175, 80), Color::RGB(33, 150, 243),
-    Color::RGB(156, 39, 176), Color::RGB(255, 235, 59), Color::RGB(0, 188, 212),
-    Color::RGB(255, 105, 180), Color::RGB(0, 255, 127), Color::RGB(70, 130, 180),
-    Color::RGB(255, 69, 0), Color::RGB(124, 252, 0), Color::RGB(0, 191, 255),
-    Color::RGB(255, 20, 147), Color::RGB(0, 255, 255), Color::RGB(255, 140, 0),
-    Color::RGB(0, 255, 0), Color::RGB(0, 0, 255), Color::RGB(255, 0, 255),
-    Color::RGB(255, 255, 0), Color::RGB(0, 128, 128), Color::RGB(128, 0, 128),
-    Color::RGB(255, 0, 0), Color::RGB(0, 128, 0), Color::RGB(0, 0, 128),
-    Color::RGB(128, 128, 0), Color::RGB(128, 0, 0), Color::RGB(0, 128, 128),
-    Color::RGB(128, 128, 128), Color::RGB(192, 192, 192), Color::RGB(255, 255, 255),
+    Color::RGB(156, 39, 176), Color::RGB(0, 188, 212), Color::RGB(255, 105, 180),
+    Color::RGB(0, 255, 127), Color::RGB(70, 130, 180), Color::RGB(255, 69, 0),
+    Color::RGB(124, 252, 0), Color::RGB(0, 191, 255), Color::RGB(255, 20, 147),
+    Color::RGB(0, 255, 255), Color::RGB(255, 140, 0), Color::RGB(0, 255, 0),
+    Color::RGB(0, 0, 255), Color::RGB(255, 0, 255), Color::RGB(0, 128, 128),
+    Color::RGB(128, 0, 128), Color::RGB(255, 0, 0), Color::RGB(0, 128, 0),
+    Color::RGB(0, 0, 128), Color::RGB(128, 128, 0), Color::RGB(128, 0, 0),
+    Color::RGB(0, 128, 128), Color::RGB(128, 128, 128), Color::RGB(192, 192, 192),
 ];
 
 #[derive(Clone)]
