@@ -13,6 +13,25 @@ use sdl2::render::TextureQuery;
 use sdl2::mixer::{InitFlag, AUDIO_S16LSB, DEFAULT_CHANNELS};
 use std::process::Command;
 
+const CELL_COLORS: [Color; 48] = [
+    Color::RGB(255, 87, 34), Color::RGB(76, 175, 80), Color::RGB(33, 150, 243),
+    Color::RGB(156, 39, 176), Color::RGB(255, 235, 59), Color::RGB(0, 188, 212),
+    Color::RGB(244, 67, 54), Color::RGB(139, 195, 74), Color::RGB(3, 169, 244),
+    Color::RGB(103, 58, 183), Color::RGB(255, 193, 7), Color::RGB(0, 150, 136),
+    Color::RGB(233, 30, 99), Color::RGB(205, 220, 57), Color::RGB(0, 122, 255),
+    Color::RGB(63, 81, 181), Color::RGB(255, 152, 0), Color::RGB(0, 188, 212),
+    Color::RGB(255, 87, 34), Color::RGB(76, 175, 80), Color::RGB(33, 150, 243),
+    Color::RGB(156, 39, 176), Color::RGB(255, 235, 59), Color::RGB(0, 188, 212),
+    Color::RGB(255, 105, 180), Color::RGB(0, 255, 127), Color::RGB(70, 130, 180),
+    Color::RGB(255, 69, 0), Color::RGB(124, 252, 0), Color::RGB(0, 191, 255),
+    Color::RGB(255, 20, 147), Color::RGB(0, 255, 255), Color::RGB(255, 140, 0),
+    Color::RGB(0, 255, 0), Color::RGB(0, 0, 255), Color::RGB(255, 0, 255),
+    Color::RGB(255, 255, 0), Color::RGB(0, 128, 128), Color::RGB(128, 0, 128),
+    Color::RGB(255, 0, 0), Color::RGB(0, 128, 0), Color::RGB(0, 0, 128),
+    Color::RGB(128, 128, 0), Color::RGB(128, 0, 0), Color::RGB(0, 128, 128),
+    Color::RGB(128, 128, 128), Color::RGB(192, 192, 192), Color::RGB(255, 255, 255),
+];
+
 #[derive(Clone)]
 struct Cell {
     x: isize,
@@ -27,7 +46,7 @@ impl Cell {
         Self {
             x,
             y,
-            color: Color::RGB(rng.r#gen(), rng.r#gen(), rng.r#gen()),
+            color: CELL_COLORS[rng.gen_range(0..CELL_COLORS.len())],
             age: 0, // Initialize age to 0
         }
     }
@@ -139,7 +158,7 @@ fn create_texture_from_text<'a>(
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
 
@@ -154,6 +173,7 @@ async fn main() {
         .fullscreen_desktop() // Start in full-screen mode
         .build()
         .unwrap();
+
 
     let mut canvas = window.into_canvas().present_vsync().build().unwrap();
     let mut event_pump = sdl_context.event_pump().unwrap();
@@ -280,4 +300,6 @@ async fn main() {
 
     // Ensure mpv process is killed when the game is closed
     mpv_process.kill().expect("Failed to kill mpv process");
+
+    Ok(())
 }
