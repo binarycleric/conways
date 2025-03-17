@@ -265,11 +265,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         }
                     }
                 },
-                Event::KeyDown { keycode: Some(Keycode::X), .. } => {
-                },
-                Event::Window {..} => {
-                    // handle window resizing if needed
-                },
                 _ => {}
             }
         }
